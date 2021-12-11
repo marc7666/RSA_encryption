@@ -59,6 +59,7 @@ def encrypt(public_k, message):
     i = 0
     while i < public_k[1]:
         res = res * message
+        i += 1
     res = res % public_k[0]
     return res
 
@@ -68,6 +69,7 @@ def decrypt(cryptogram, private_k):
     t = 0
     while t < private_k[1]:
         res = res * cryptogram
+        t += 1
     res = res % private_k[0]
     return res
 
@@ -77,7 +79,7 @@ if __name__ == "__main__":
     print("Public key = ", public_key, " private key = ", private_key, " Randoms = ", randoms)
     print("p =", randoms[0], " q = ", randoms[1], " fi = ", randoms[2], " n = ", public_key[0], " e = ", public_key[1],
           " d = ", private_key[1])
-    m = 12
+    m = 2
     print("Message = ", m)
     c = encrypt(public_key, m)
     print("Cryptogram = ", c)

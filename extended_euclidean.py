@@ -3,6 +3,7 @@ Authorship: Marc Cervera Rosell
 """
 
 
+# pylint: disable=C0103
 def xgcd(num1, num2):
     """
     Performs the extended Euclidean algorithm

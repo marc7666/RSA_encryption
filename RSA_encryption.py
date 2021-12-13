@@ -1,87 +1,148 @@
 """
 @author: Marc Cervera Rosell
 """
-import math
 import random
+import extended_euclidean
+import greatest_common_divisor
+from colorama import Fore
 
 
-def is_prime(number):
+def choose_e(fi):
     """
-    This method checks if the parameter is prime
-    :return: True if the parameter is prime and False otherwise
+    Chooses a random number, 1 < e < fi, and checks if it is coprime with the fi, that is to say, gcd(e, fi) = 1
     """
-    for i in range(2, number):
-        if number % i == 0:
-            return False
-        return True
-
-
-def generate_randoms():
-    """
-    This method generates two random numbers that are going to be used later
-    :return: Two integers p and q
-    """
-    p = 4
-    q = 4
-    while is_prime(p) == False or is_prime(q) == False:
-        p = random.randint(2, 10)
-        q = random.randint(2, 10)
-    return p, q
-
-
-def calc_e(fi):
-    e = 2
-    while math.gcd(e, fi) != 1:
-        e += 1
+    e = 0  # 0 can be divided between each of the numbers in the set of R.
+    while greatest_common_divisor.gcd(e, fi) != 1:
+        e = random.randint(2, fi)
     return e
 
 
-def calc_d(fi, e):
-    k = 0
-    d = (1 + k * fi) / e
-    while (1 + k * fi) % e != 0:
-        k += 1
-        d = (1 + k * fi) / e
-    return int(d)
+def write_keys_in_file(n, e, d):
+    public_k = open('Public key file', 'w')
+    public_k.write(str(n) + '\n')
+    public_k.write(str(e) + '\n')
+    public_k.close()
+    private_k = open('Private key file', 'w')
+    private_k.write(str(n) + '\n')
+    private_k.write(str(d) + '\n')
+    private_k.close()
 
 
 def generate_keys():
-    p, q = generate_randoms()
+    """
+       Selects two random prime numbers from a list of prime numbers which has
+       values that go up to 100k. It creates a text file and stores the two
+       numbers there where they can be used later. Using the prime numbers,
+       it also computes and stores the public and private keys in two separate
+       files.
+    """
+    p = random.randint(2, 10)
+    q = random.randint(2, 10)
     n = p * q
-    fi = (p - 1) * (q - 1)
-    e = calc_e(fi)
-    d = calc_d(fi, e)
-    return (n, e), (n, d), (p, q, fi)
+    fi = (n - 1) * (q - 1)
+    e = choose_e(fi)
+
+    # Computing d. 1 < d < fi such that e * d = 1 mod fi. -> e and d are inverses in mod fi
+    gcd, d, y = extended_euclidean.xgcd(e, fi)
+
+    # In case 'd' is negative, it has to been transformed to positive
+    if d < 0:
+        d += fi
+
+    write_keys_in_file(n, e, d)
 
 
-def encrypt(public_k, message):
-    res = 1
-    i = 0
-    while i < public_k[1]:
-        res = res * message
-        i += 1
-    res = res % public_k[0]
-    return res
+def encrypt(message, public_k_file='Public key file', block_size=2):
+    try:
+        file = open(public_k_file)
+    except FileNotFoundError:
+        print(Fore.RED + "ERROR! File not found")
+    else:
+        n = int(file.readline())
+        e = int(file.readline())
+        file.close()
+
+        encrypted = []
+        cryptogram = -1
+
+        if len(message) > 0:
+            # Initialize cryptogram to the ASCII code of the first character of the message
+            cryptogram = ord(message[0])
+
+        for i in range(1, len(message)):
+            # add cryptogram to the list if the mas block size is reached
+            # Reset the cryptogram so we can continue adding ASCII codes
+            if i % block_size == 0:
+                encrypted.append(cryptogram)
+                cryptogram = 0
+            cryptogram = cryptogram * 1000 + ord(message[i])  # Multiplying by 1000 to shift the digits over to the
+            # left by 3 places because ASCII codes are a max of 3 digits in decimal
+        encrypted.append(cryptogram)  # The last block
+
+        for i in range(len(encrypted)):  # Encrypting the numbers with the formula => number ** e mod n
+            encrypted[i] = str((encrypted[i] ** e) % n)
+
+        final_cryptogram = " ".join(encrypted)
+        return final_cryptogram
 
 
-def decrypt(cryptogram, private_k):
-    res = 1
-    t = 0
-    while t < private_k[1]:
-        res = res * cryptogram
-        t += 1
-    res = res % private_k[0]
-    return res
+def decrypt(blocks, block_size=2):
+    fo = open('Private key file', 'r')
+    n = int(fo.readline())
+    d = int(fo.readline())
+    fo.close()
+
+    # turns the string into a list of ints
+    list_blocks = blocks.split(' ')
+    int_blocks = []
+
+    for s in list_blocks:
+        int_blocks.append(int(s))
+
+    message = ""
+
+    # converts each int in the list to block_size number of characters
+    # by default, each int represents two characters
+    for i in range(len(int_blocks)):
+        # decrypt all of the numbers by taking it to the power of d
+        # and modding it by n
+        int_blocks[i] = (int_blocks[i] ** d) % n
+
+        tmp = ""
+        # take apart each block into its ASCII codes for each character
+        # and store it in the message string
+        for c in range(block_size):
+            tmp = chr(int_blocks[i] % 1000) + tmp
+            int_blocks[i] //= 1000
+        message += tmp
+
+    return message
 
 
 if __name__ == "__main__":
-    public_key, private_key, randoms = generate_keys()
-    print("Public key = ", public_key, " private key = ", private_key, " Randoms = ", randoms)
-    print("p =", randoms[0], " q = ", randoms[1], " fi = ", randoms[2], " n = ", public_key[0], " e = ", public_key[1],
-          " d = ", private_key[1])
-    m = 2
-    print("Message = ", m)
-    c = encrypt(public_key, m)
-    print("Cryptogram = ", c)
-    orig_m = decrypt(c, private_key)
-    print("Original message = ", orig_m)
+    choose_again = input('Do you want to generate new public and private keys? (yes or no) ')
+    if choose_again == 'yes':
+        generate_keys()
+
+    instruction = input('Would you like to encrypt or decrypt? (Enter encrypt or decrypt): ')
+    if instruction == 'encrypt':
+        message = input('What would you like to encrypt?\n')
+        option = input('Do you want to encrypt using your own public key? (yes or no) ')
+
+        if option == 'yes':
+            print('Encrypting...')
+            print(encrypt(message))
+        else:
+            file_option = input('Enter the file name that stores the public key: ')
+            print('Encrypting...')
+            print(encrypt(message, file_option))
+
+    elif instruction == 'decrypt':
+        message = input('What would you like to decrypt?\n')
+        print('Decrypting...')
+        print(message)
+        m = encrypt(message)
+        print(m)
+        print(decrypt(m))
+    else:
+        print('That is not a proper instruction.')

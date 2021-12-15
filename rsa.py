@@ -52,14 +52,22 @@ def decrypt(cryptogram, d, n):
     return (cryptogram ** d) % n
 
 
+def write_p_q(p, q):
+    randoms = open('Values_of_p_and_q.txt', 'w')
+    randoms.write(str(p) + "\n")
+    randoms.write(str(q) + "\n")
+    randoms.close()
+
+
 if __name__ == "__main__":
     print(Fore.YELLOW, "Generating 2 prime random numbers...")
     # p, q = generate_p_q()
     p = 5
     q = 11
+    write_p_q(p, q)
     time.sleep(2)  # Waiting 2 seconds
-    print("p = ", p, " q = ", q)
-
+    print(Fore.GREEN, "Take a look at ", repr(str("Values_of_p_and_q.txt")), "to know the values of the variables.")
+    print(Fore.RED, "The first value is ", repr(str("p")), ", and the second one is ", repr(str("q")))
     # num_n, num_fi = generate_n_fi(p, q)
     num_n = 55
     num_fi = 40
